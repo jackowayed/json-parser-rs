@@ -1,25 +1,5 @@
 use std::{iter::Peekable, str::Chars};
 
-/*struct Lexer {
-    input: Box<String>,
-    cursor: u32,
-}
-
-impl Lexer {
-    pub fn new(input: String) -> Self {
-        Self {
-            input: Box::new(input),
-            cursor: 0,
-        }
-    }
-
-    pub fn lex(&self) -> Vec<String> {
-        let vec;
-        vec
-    }
-}
-*/
-
 struct Lexer {
     tokens: Vec<String>,
 }
