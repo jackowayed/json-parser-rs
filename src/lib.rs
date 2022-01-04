@@ -11,14 +11,17 @@ impl Lexer {
     pub fn lex(&mut self, input: String) {
         let mut it = input.chars().peekable();
         self.value(&mut it);
-        //let tokens = self.tokens;
-        //self.tokens = vec![];
     }
 
     pub fn value(&mut self, it: &mut Peekable<Chars>) {
         while let Some(&c) = it.peek() {
             match c {
                 '0'..='9' => self.number(it),
+                '\t' | ' ' | '\n' | '\r' => {
+                    it.next(); // skip whitespace
+                }
+                ':' | ',' | '[' | ']' | '{' | '}' => self.single_char(it),
+                't' | 'f' => self.alpha_literal(it),
                 _ => todo!("more matches coming"),
             }
         }
@@ -34,6 +37,21 @@ impl Lexer {
         }
         self.tokens.push(num_str);
     }
+
+    fn alpha_literal(&mut self, it: &mut Peekable<Chars>) {
+        let mut str = String::new();
+        while let Some(&c) = it.peek() {
+            match c {
+                'a'..='z' => str.push(it.next().unwrap()),
+                _ => break,
+            }
+        }
+        self.tokens.push(str);
+    }
+
+    fn single_char(&mut self, it: &mut Peekable<Chars>) {
+        self.tokens.push(it.next().unwrap().to_string());
+    }
 }
 
 // Challenge: change this to a slice
@@ -44,19 +62,30 @@ pub fn lex(input: String) -> Vec<String> {
     lexer.tokens
 }
 
+pub fn lex_slice(input: &str) -> Vec<String> {
+    lex(input.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
-    fn pass_in_string() {
+    fn just_a_number() {
         let input = "24".to_string();
         let tokens = lex(input);
         assert_eq!(vec!["24".to_string()], tokens);
     }
 
+    // https://stackoverflow.com/a/38183903
+    macro_rules! vec_of_strings {
+        ($($x:expr),*) => (vec![$($x.to_string()),*]);
+    }
+
     #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
+    fn lexing() {
+        assert_eq!(
+            lex_slice("[5  , false , {:}]"),
+            vec_of_strings!["[", "5", ",", "false", ",", "{", ":", "}", "]"]
+        )
     }
 }
