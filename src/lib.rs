@@ -21,7 +21,7 @@ impl Lexer {
                     it.next(); // skip whitespace
                 }
                 ':' | ',' | '[' | ']' | '{' | '}' => self.single_char(it),
-                't' | 'f' => self.alpha_literal(it),
+                't' | 'f' | 'n' => self.alpha_literal(it),
                 '"' => self.string(it),
                 _ => todo!("more matches coming"),
             }
@@ -92,8 +92,41 @@ pub fn lex_slice(input: &str) -> Vec<String> {
     lex(input.to_string())
 }
 
+//struct JsonValue
+#[derive(PartialEq, Debug)]
+pub enum Value {
+    Number,
+    String,
+    Boolean(bool),
+    Null,
+}
+
+pub fn parse(tokens: Vec<String>) -> Value {
+    let t = tokens.first().unwrap().as_str();
+    match t {
+        "true" => Value::Boolean(true),
+        "false" => Value::Boolean(false),
+        _ => todo!(""),
+    }
+}
+
 #[cfg(test)]
-mod tests {
+mod parser_tests {
+    use super::*;
+
+    // https://stackoverflow.com/a/38183903
+    macro_rules! vec_of_strings {
+        ($($x:expr),*) => (vec![$($x.to_string()),*]);
+    }
+
+    #[test]
+    fn booleans() {
+        assert_eq!(Value::Boolean(true), parse(vec_of_strings!["true"]))
+    }
+}
+
+#[cfg(test)]
+mod lexer_tests {
     use super::*;
     #[test]
     fn just_a_number() {
