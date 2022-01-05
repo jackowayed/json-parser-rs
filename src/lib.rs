@@ -22,6 +22,7 @@ impl Lexer {
                 }
                 ':' | ',' | '[' | ']' | '{' | '}' => self.single_char(it),
                 't' | 'f' => self.alpha_literal(it),
+                '"' => self.string(it),
                 _ => todo!("more matches coming"),
             }
         }
@@ -38,6 +39,7 @@ impl Lexer {
         self.tokens.push(num_str);
     }
 
+    // true, false
     fn alpha_literal(&mut self, it: &mut Peekable<Chars>) {
         let mut str = String::new();
         while let Some(&c) = it.peek() {
@@ -51,6 +53,30 @@ impl Lexer {
 
     fn single_char(&mut self, it: &mut Peekable<Chars>) {
         self.tokens.push(it.next().unwrap().to_string());
+    }
+
+    fn string(&mut self, it: &mut Peekable<Chars>) {
+        assert!(it.next() == Some('"'));
+        let mut str = String::new();
+        let mut prior_was_backslash = false;
+        while let Some(c) = it.next() {
+            if prior_was_backslash {
+                str.push(c);
+                prior_was_backslash = false;
+                continue;
+            }
+            match c {
+                '\\' => {
+                    prior_was_backslash = true;
+                }
+                '"' => {
+                    break;
+                }
+                _ => str.push(c),
+            }
+        }
+        // todo catch unterminated strings
+        self.tokens.push(str);
     }
 }
 
@@ -86,6 +112,10 @@ mod tests {
         assert_eq!(
             lex_slice("[5  , false , {:}]"),
             vec_of_strings!["[", "5", ",", "false", ",", "{", ":", "}", "]"]
+        );
+        assert_eq!(
+            lex_slice("{\"foo\": \"bar\"}"),
+            vec_of_strings!["{", "foo", ":", "bar", "}"]
         )
     }
 }
