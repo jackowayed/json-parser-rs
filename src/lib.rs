@@ -107,35 +107,58 @@ pub enum Value {
 pub fn parse(tokens: Vec<String>) -> Value {
     //let t = tokens.first().unwrap().as_str();
     let mut it = tokens.into_iter();
-    value(it)
+    value(&mut it)
 }
 
-pub fn value(mut it: std::vec::IntoIter<String>) -> Value {
+pub fn value(it: &mut std::vec::IntoIter<String>) -> Value {
     let t = it.next().unwrap();
     match t.as_str() {
         "true" => Value::Boolean(true),
         "false" => Value::Boolean(false),
         "{" => object(it),
         s if t.starts_with("\"") => Value::String(string(s)),
-        _ => todo!(""),
+        s => {
+            dbg!(s);
+            todo!("");
+        }
     }
 }
 
-fn object(mut it: std::vec::IntoIter<String>) -> Value {
+fn object(mut it: &mut std::vec::IntoIter<String>) -> Value {
     let mut map = HashMap::new();
-    let t = it.next().unwrap();
-    match t.as_str() {
-        "}" => return Value::Object(map),
-        "," => (), // todo: currently allowing comma before first pair, multiple commas, etc
-        _ => {
-            // possible fix use singleton iterator to put t back via chaining.
-            let key = string(t.as_str());
-            assert!(it.next().unwrap().as_str() == ":");
-            let value = value(it);
-            map.insert(key, value);
+    #[derive(PartialEq, Debug)]
+    enum WhatsNext {
+        PairOrEnd, // start
+        CommaOrEnd,
+        Pair,
+    }
+    let mut state = WhatsNext::PairOrEnd;
+    loop {
+        let tok = it.next().unwrap();
+        match tok.as_str() {
+            "}" => {
+                assert!(state != WhatsNext::Pair, "Can't end after comma");
+                return Value::Object(map);
+            }
+            "," => {
+                assert!(
+                    state == WhatsNext::CommaOrEnd,
+                    "Comma where it shouldn't be."
+                );
+                state = WhatsNext::Pair;
+            }
+            _ => {
+                assert!(state != WhatsNext::CommaOrEnd, "Need comma between pairs");
+                state = WhatsNext::CommaOrEnd;
+                // possible fix use singleton iterator to put t back via chaining.
+                let key = string(&tok);
+                assert!(it.next().unwrap().as_str() == ":");
+                let value = value(&mut it);
+                map.insert(key, value);
+            }
         }
     }
-    return Value::Object(map);
+    //return Value::Object(map);
 }
 
 fn string(t: &str) -> String {
@@ -143,16 +166,15 @@ fn string(t: &str) -> String {
     t[1..t.len() - 1].to_string()
 }
 
+// https://stackoverflow.com/a/38183903
+#[allow(unused_macros)]
+macro_rules! vec_of_strings {
+    ($($x:expr),*) => (vec![$($x.to_string()),*]);
+}
+
 #[cfg(test)]
 mod parser_tests {
-    use std::hash::Hash;
-
     use super::*;
-
-    // https://stackoverflow.com/a/38183903
-    macro_rules! vec_of_strings {
-        ($($x:expr),*) => (vec![$($x.to_string()),*]);
-    }
 
     #[test]
     fn booleans() {
@@ -170,16 +192,97 @@ mod parser_tests {
     #[test]
     fn object() {
         let empty_map = HashMap::new();
+        let empty_object_value = Value::Object(empty_map);
 
         let empty_obj = parse(vec_of_strings!["{", "}"]);
-        assert_eq!(empty_obj, Value::Object(empty_map));
+        assert_eq!(empty_obj, empty_object_value);
 
         let mut singleton_map = HashMap::new();
         singleton_map.insert("foo".to_string(), Value::String("bar".to_string()));
+        let singleton_object = Value::Object(singleton_map);
         assert_eq!(
-            Value::Object(singleton_map),
+            singleton_object,
+            // {"foo": "bar"}
             parse(vec_of_strings!["{", "\"foo\"", ":", "\"bar\"", "}"])
         );
+
+        let mut doubleton_map = HashMap::new();
+        doubleton_map.insert("foo".to_string(), Value::String("bar".to_string()));
+        doubleton_map.insert("baz".to_string(), Value::Boolean(false));
+        assert_eq!(
+            Value::Object(doubleton_map),
+            // {"foo": "bar"}
+            parse(vec_of_strings![
+                "{", "\"foo\"", ":", "\"bar\"", ",", "\"baz\"", ":", "false", "}"
+            ])
+        );
+
+        let mut nested_map = HashMap::new();
+        nested_map.insert("outer".to_string(), empty_object_value);
+        assert_eq!(
+            Value::Object(nested_map),
+            parse(vec_of_strings!["{", "\"outer\"", ":", "{", "}", "}"])
+        );
+
+        let mut nested_singleton_map = HashMap::new();
+        nested_singleton_map.insert("outer".to_string(), singleton_object);
+        assert_eq!(
+            Value::Object(nested_singleton_map),
+            parse(vec_of_strings![
+                "{",
+                "\"outer\"",
+                ":",
+                "{",
+                "\"foo\"",
+                ":",
+                "\"bar\"",
+                "}",
+                "}"
+            ])
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn missing_comma() {
+        parse(vec_of_strings![
+            "{", "\"foo\"", ":", "\"bar\"", "\"baz\"", ":", "false", "}"
+        ]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn trailing_comma_on_doubleton() {
+        parse(vec_of_strings![
+            "{", "\"foo\"", ":", "\"bar\"", ",", "\"baz\"", ":", "false", ",", "}"
+        ]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn leading_comma_on_doubleton() {
+        parse(vec_of_strings![
+            "{", ",", "\"foo\"", ":", "\"bar\"", ",", "\"baz\"", ":", "false", "}"
+        ]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn doubled_comma_on_doubleton() {
+        parse(vec_of_strings![
+            "{", "\"foo\"", ":", "\"bar\"", ",", ",", "\"baz\"", ":", "false", "}"
+        ]);
+    }
+    #[test]
+    #[should_panic]
+    fn object_with_leading_comma() {
+        parse(vec_of_strings!("{", ",", "\"foo\"", ":", "\"bar\"", "}"));
+    }
+
+    #[test]
+    #[should_panic]
+    fn object_with_trailing_comma() {
+        parse(vec_of_strings!("{", "\"foo\"", ":", "\"bar\"", ",", "}"));
     }
 }
 
@@ -191,11 +294,6 @@ mod lexer_tests {
         let input = "24".to_string();
         let tokens = lex(input);
         assert_eq!(vec!["24".to_string()], tokens);
-    }
-
-    // https://stackoverflow.com/a/38183903
-    macro_rules! vec_of_strings {
-        ($($x:expr),*) => (vec![$($x.to_string()),*]);
     }
 
     #[test]
