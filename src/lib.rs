@@ -109,10 +109,25 @@ pub fn parse(tokens: Vec<String>) -> Value {
     match t.as_str() {
         "true" => Value::Boolean(true),
         "false" => Value::Boolean(false),
-        //"{" => object
+        "{" => object(it),
         s if t.starts_with("\"") => string(s),
         _ => todo!(""),
     }
+}
+
+fn object(mut it: std::vec::IntoIter<String>) -> Value {
+    let map = HashMap::new();
+    let t = it.next().unwrap();
+    match t.as_str() {
+        "}" => return Value::Object(map),
+        _ => todo!(),
+    }
+    // string
+    // :
+    // value
+    // [, string: value]*
+    // }
+    todo!()
 }
 
 fn string(t: &str) -> Value {
@@ -139,6 +154,14 @@ mod parser_tests {
             Value::String("foo bar".to_string()),
             parse(vec!["\"foo bar\"".to_string()])
         )
+    }
+
+    #[test]
+    fn object() {
+        let empty_map = HashMap::new();
+
+        let empty_obj = parse(vec_of_strings!["{", "}"]);
+        assert_eq!(empty_obj, Value::Object(empty_map));
     }
 }
 
