@@ -56,6 +56,9 @@ impl Lexer {
     }
 
     fn string(&mut self, it: &mut Peekable<Chars>) {
+        // TODO: this function currently drops the quotes,
+        // but the parser assumes there will be quotes.
+        // Need to change one side or the other before integration.
         assert!(it.next() == Some('"'));
         let mut str = String::new();
         let mut prior_was_backslash = false;
@@ -92,7 +95,6 @@ pub fn lex_slice(input: &str) -> Vec<String> {
     lex(input.to_string())
 }
 
-//struct JsonValue
 #[derive(PartialEq, Debug)]
 pub enum Value {
     Number,
@@ -124,7 +126,7 @@ fn object(mut it: std::vec::IntoIter<String>) -> Value {
     let t = it.next().unwrap();
     match t.as_str() {
         "}" => return Value::Object(map),
-        "," => (), // todo: currently allowing comma before first pair
+        "," => (), // todo: currently allowing comma before first pair, multiple commas, etc
         _ => {
             // possible fix use singleton iterator to put t back via chaining.
             let key = string(t.as_str());
@@ -134,12 +136,6 @@ fn object(mut it: std::vec::IntoIter<String>) -> Value {
         }
     }
     return Value::Object(map);
-    // string
-    // :
-    // value
-    // [, string: value]*
-    // }
-    todo!()
 }
 
 fn string(t: &str) -> String {
