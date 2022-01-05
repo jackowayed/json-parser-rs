@@ -105,23 +105,32 @@ pub enum Value {
 pub fn parse(tokens: Vec<String>) -> Value {
     //let t = tokens.first().unwrap().as_str();
     let mut it = tokens.into_iter();
+    value(it)
+}
+
+pub fn value(mut it: std::vec::IntoIter<String>) -> Value {
     let t = it.next().unwrap();
     match t.as_str() {
         "true" => Value::Boolean(true),
         "false" => Value::Boolean(false),
         "{" => object(it),
-        s if t.starts_with("\"") => string(s),
+        s if t.starts_with("\"") => Value::String(string(s)),
         _ => todo!(""),
     }
 }
 
 fn object(mut it: std::vec::IntoIter<String>) -> Value {
-    let map = HashMap::new();
+    let mut map = HashMap::new();
     let t = it.next().unwrap();
     match t.as_str() {
         "}" => return Value::Object(map),
-        _ => todo!(),
+        "," => (), // todo: currently allowing comma before first pair
+        _ => {
+            let (key, value) = pair(it);
+            map.insert(key, value);
+        }
     }
+    return Value::Object(map);
     // string
     // :
     // value
@@ -130,12 +139,22 @@ fn object(mut it: std::vec::IntoIter<String>) -> Value {
     todo!()
 }
 
-fn string(t: &str) -> Value {
-    Value::String(t[1..t.len() - 1].to_string())
+fn pair(mut it: std::vec::IntoIter<String>) -> (String, Value) {
+    let key = string(it.next().unwrap().as_str());
+    assert!(it.next().unwrap().as_str() == ":");
+    let value = value(it);
+    return (key, value);
+}
+
+fn string(t: &str) -> String {
+    dbg!(t);
+    t[1..t.len() - 1].to_string()
 }
 
 #[cfg(test)]
 mod parser_tests {
+    use std::hash::Hash;
+
     use super::*;
 
     // https://stackoverflow.com/a/38183903
@@ -162,6 +181,13 @@ mod parser_tests {
 
         let empty_obj = parse(vec_of_strings!["{", "}"]);
         assert_eq!(empty_obj, Value::Object(empty_map));
+
+        let mut singleton_map = HashMap::new();
+        singleton_map.insert("foo".to_string(), Value::String("bar".to_string()));
+        assert_eq!(
+            Value::Object(singleton_map),
+            parse(vec_of_strings!["{", "\"foo\"", ":", "\"bar\"", "}"])
+        );
     }
 }
 
