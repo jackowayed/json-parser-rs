@@ -1,4 +1,4 @@
-use std::{iter::Peekable, str::Chars};
+use std::{collections::HashMap, iter::Peekable, str::Chars};
 
 struct Lexer {
     tokens: Vec<String>,
@@ -21,7 +21,7 @@ impl Lexer {
                     it.next(); // skip whitespace
                 }
                 ':' | ',' | '[' | ']' | '{' | '}' => self.single_char(it),
-                't' | 'f' => self.alpha_literal(it),
+                't' | 'f' | 'n' => self.alpha_literal(it),
                 '"' => self.string(it),
                 _ => todo!("more matches coming"),
             }
@@ -56,6 +56,9 @@ impl Lexer {
     }
 
     fn string(&mut self, it: &mut Peekable<Chars>) {
+        // TODO: this function currently drops the quotes,
+        // but the parser assumes there will be quotes.
+        // Need to change one side or the other before integration.
         assert!(it.next() == Some('"'));
         let mut str = String::new();
         let mut prior_was_backslash = false;
@@ -70,13 +73,13 @@ impl Lexer {
                     prior_was_backslash = true;
                 }
                 '"' => {
-                    break;
+                    self.tokens.push(str);
+                    return;
                 }
                 _ => str.push(c),
             }
         }
-        // todo catch unterminated strings
-        self.tokens.push(str);
+        panic!("unterminated string")
     }
 }
 
@@ -92,8 +95,96 @@ pub fn lex_slice(input: &str) -> Vec<String> {
     lex(input.to_string())
 }
 
+#[derive(PartialEq, Debug)]
+pub enum Value {
+    Number,
+    String(String),
+    Boolean(bool),
+    Null,
+    Object(HashMap<String, Value>),
+}
+
+pub fn parse(tokens: Vec<String>) -> Value {
+    //let t = tokens.first().unwrap().as_str();
+    let mut it = tokens.into_iter();
+    value(it)
+}
+
+pub fn value(mut it: std::vec::IntoIter<String>) -> Value {
+    let t = it.next().unwrap();
+    match t.as_str() {
+        "true" => Value::Boolean(true),
+        "false" => Value::Boolean(false),
+        "{" => object(it),
+        s if t.starts_with("\"") => Value::String(string(s)),
+        _ => todo!(""),
+    }
+}
+
+fn object(mut it: std::vec::IntoIter<String>) -> Value {
+    let mut map = HashMap::new();
+    let t = it.next().unwrap();
+    match t.as_str() {
+        "}" => return Value::Object(map),
+        "," => (), // todo: currently allowing comma before first pair, multiple commas, etc
+        _ => {
+            // possible fix use singleton iterator to put t back via chaining.
+            let key = string(t.as_str());
+            assert!(it.next().unwrap().as_str() == ":");
+            let value = value(it);
+            map.insert(key, value);
+        }
+    }
+    return Value::Object(map);
+}
+
+fn string(t: &str) -> String {
+    dbg!(t);
+    t[1..t.len() - 1].to_string()
+}
+
 #[cfg(test)]
-mod tests {
+mod parser_tests {
+    use std::hash::Hash;
+
+    use super::*;
+
+    // https://stackoverflow.com/a/38183903
+    macro_rules! vec_of_strings {
+        ($($x:expr),*) => (vec![$($x.to_string()),*]);
+    }
+
+    #[test]
+    fn booleans() {
+        assert_eq!(Value::Boolean(true), parse(vec_of_strings!["true"]))
+    }
+
+    #[test]
+    fn string() {
+        assert_eq!(
+            Value::String("foo bar".to_string()),
+            parse(vec!["\"foo bar\"".to_string()])
+        )
+    }
+
+    #[test]
+    fn object() {
+        let empty_map = HashMap::new();
+
+        let empty_obj = parse(vec_of_strings!["{", "}"]);
+        assert_eq!(empty_obj, Value::Object(empty_map));
+
+        let mut singleton_map = HashMap::new();
+        singleton_map.insert("foo".to_string(), Value::String("bar".to_string()));
+        assert_eq!(
+            Value::Object(singleton_map),
+            parse(vec_of_strings!["{", "\"foo\"", ":", "\"bar\"", "}"])
+        );
+    }
+}
+
+#[cfg(test)]
+mod lexer_tests {
     use super::*;
     #[test]
     fn just_a_number() {
@@ -117,5 +208,11 @@ mod tests {
             lex_slice("{\"foo\": \"bar\"}"),
             vec_of_strings!["{", "foo", ":", "bar", "}"]
         )
+    }
+
+    #[test]
+    #[should_panic]
+    fn unterminated_string() {
+        lex_slice("\"unclosed");
     }
 }
