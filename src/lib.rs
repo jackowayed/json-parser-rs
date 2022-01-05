@@ -1,4 +1,4 @@
-use std::{iter::Peekable, str::Chars};
+use std::{collections::HashMap, iter::Peekable, str::Chars};
 
 struct Lexer {
     tokens: Vec<String>,
@@ -96,18 +96,27 @@ pub fn lex_slice(input: &str) -> Vec<String> {
 #[derive(PartialEq, Debug)]
 pub enum Value {
     Number,
-    String,
+    String(String),
     Boolean(bool),
     Null,
+    Object(HashMap<String, Value>),
 }
 
 pub fn parse(tokens: Vec<String>) -> Value {
-    let t = tokens.first().unwrap().as_str();
-    match t {
+    //let t = tokens.first().unwrap().as_str();
+    let mut it = tokens.into_iter();
+    let t = it.next().unwrap();
+    match t.as_str() {
         "true" => Value::Boolean(true),
         "false" => Value::Boolean(false),
+        //"{" => object
+        s if t.starts_with("\"") => string(s),
         _ => todo!(""),
     }
+}
+
+fn string(t: &str) -> Value {
+    Value::String(t[1..t.len() - 1].to_string())
 }
 
 #[cfg(test)]
@@ -122,6 +131,14 @@ mod parser_tests {
     #[test]
     fn booleans() {
         assert_eq!(Value::Boolean(true), parse(vec_of_strings!["true"]))
+    }
+
+    #[test]
+    fn string() {
+        assert_eq!(
+            Value::String("foo bar".to_string()),
+            parse(vec!["\"foo bar\"".to_string()])
+        )
     }
 }
 
