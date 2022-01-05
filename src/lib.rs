@@ -117,7 +117,10 @@ pub fn value(mut it: std::vec::IntoIter<String>) -> Value {
         "false" => Value::Boolean(false),
         "{" => object(it),
         s if t.starts_with("\"") => Value::String(string(s)),
-        _ => todo!(""),
+        s => {
+            dbg!(s);
+            todo!("");
+        }
     }
 }
 
@@ -126,13 +129,16 @@ fn object(mut it: std::vec::IntoIter<String>) -> Value {
     let t = it.next().unwrap();
     let mut needs_comma = false;
     match t.as_str() {
-        "}" => return Value::Object(map),
+        "}" => {
+            assert!(needs_comma, "Object may not have trailing comma");
+            return Value::Object(map);
+        }
         "," => {
-            assert!(needs_comma, "extra comma in object");
+            assert!(needs_comma, "Object may not have repeated or leading comma");
             needs_comma = false;
         }
         _ => {
-            assert!(!needs_comma, "comma missing in object");
+            assert!(!needs_comma, "Object is missing a comma");
             needs_comma = true;
             // possible fix use singleton iterator to put t back via chaining.
             let key = string(t.as_str());
@@ -190,7 +196,13 @@ mod parser_tests {
     #[test]
     #[should_panic]
     fn object_with_leading_comma() {
-        parse(vec_of_strings!("{", ",", "foo", ":", "bar", "}"));
+        parse(vec_of_strings!("{", ",", "\"foo\"", ":", "\"bar\"", "}"));
+    }
+
+    #[test]
+    #[should_panic]
+    fn object_with_trailing_comma() {
+        parse(vec_of_strings!("{", "\"foo\"", ":", "\"bar\"", ",", "}"));
     }
 }
 
