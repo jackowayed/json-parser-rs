@@ -127,7 +127,9 @@ fn object(mut it: std::vec::IntoIter<String>) -> Value {
         "," => (), // todo: currently allowing comma before first pair
         _ => {
             // possible fix use singleton iterator to put t back via chaining.
-            let (key, value) = pair(it);
+            let key = string(t.as_str());
+            assert!(it.next().unwrap().as_str() == ":");
+            let value = value(it);
             map.insert(key, value);
         }
     }
@@ -138,13 +140,6 @@ fn object(mut it: std::vec::IntoIter<String>) -> Value {
     // [, string: value]*
     // }
     todo!()
-}
-
-fn pair(mut it: std::vec::IntoIter<String>) -> (String, Value) {
-    let key = string(it.next().unwrap().as_str());
-    assert!(it.next().unwrap().as_str() == ":");
-    let value = value(it);
-    return (key, value);
 }
 
 fn string(t: &str) -> String {
