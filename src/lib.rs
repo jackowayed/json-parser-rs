@@ -70,13 +70,13 @@ impl Lexer {
                     prior_was_backslash = true;
                 }
                 '"' => {
-                    break;
+                    self.tokens.push(str);
+                    return;
                 }
                 _ => str.push(c),
             }
         }
-        // todo catch unterminated strings
-        self.tokens.push(str);
+        panic!("unterminated string")
     }
 }
 
@@ -117,5 +117,11 @@ mod tests {
             lex_slice("{\"foo\": \"bar\"}"),
             vec_of_strings!["{", "foo", ":", "bar", "}"]
         )
+    }
+
+    #[test]
+    #[should_panic]
+    fn unterminated_string() {
+        lex_slice("\"unclosed");
     }
 }
