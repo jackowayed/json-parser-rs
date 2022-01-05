@@ -126,6 +126,7 @@ fn object(mut it: std::vec::IntoIter<String>) -> Value {
         "}" => return Value::Object(map),
         "," => (), // todo: currently allowing comma before first pair
         _ => {
+            // possible fix use singleton iterator to put t back via chaining.
             let (key, value) = pair(it);
             map.insert(key, value);
         }
