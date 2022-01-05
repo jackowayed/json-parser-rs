@@ -106,7 +106,7 @@ pub enum Value {
 
 pub fn parse(tokens: Vec<String>) -> Value {
     //let t = tokens.first().unwrap().as_str();
-    let mut it = tokens.into_iter();
+    let it = tokens.into_iter();
     value(it)
 }
 
@@ -124,10 +124,16 @@ pub fn value(mut it: std::vec::IntoIter<String>) -> Value {
 fn object(mut it: std::vec::IntoIter<String>) -> Value {
     let mut map = HashMap::new();
     let t = it.next().unwrap();
+    let mut needs_comma = false;
     match t.as_str() {
         "}" => return Value::Object(map),
-        "," => (), // todo: currently allowing comma before first pair, multiple commas, etc
+        "," => {
+            assert!(needs_comma, "extra comma in object");
+            needs_comma = false;
+        }
         _ => {
+            assert!(!needs_comma, "comma missing in object");
+            needs_comma = true;
             // possible fix use singleton iterator to put t back via chaining.
             let key = string(t.as_str());
             assert!(it.next().unwrap().as_str() == ":");
@@ -143,16 +149,15 @@ fn string(t: &str) -> String {
     t[1..t.len() - 1].to_string()
 }
 
+// https://stackoverflow.com/a/38183903
+#[allow(unused_macros)]
+macro_rules! vec_of_strings {
+    ($($x:expr),*) => (vec![$($x.to_string()),*]);
+}
+
 #[cfg(test)]
 mod parser_tests {
-    use std::hash::Hash;
-
     use super::*;
-
-    // https://stackoverflow.com/a/38183903
-    macro_rules! vec_of_strings {
-        ($($x:expr),*) => (vec![$($x.to_string()),*]);
-    }
 
     #[test]
     fn booleans() {
@@ -181,6 +186,12 @@ mod parser_tests {
             parse(vec_of_strings!["{", "\"foo\"", ":", "\"bar\"", "}"])
         );
     }
+
+    #[test]
+    #[should_panic]
+    fn object_with_leading_comma() {
+        parse(vec_of_strings!("{", ",", "foo", ":", "bar", "}"));
+    }
 }
 
 #[cfg(test)]
@@ -191,11 +202,6 @@ mod lexer_tests {
         let input = "24".to_string();
         let tokens = lex(input);
         assert_eq!(vec!["24".to_string()], tokens);
-    }
-
-    // https://stackoverflow.com/a/38183903
-    macro_rules! vec_of_strings {
-        ($($x:expr),*) => (vec![$($x.to_string()),*]);
     }
 
     #[test]
