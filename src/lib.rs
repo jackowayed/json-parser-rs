@@ -218,6 +218,37 @@ mod parser_tests {
 
     #[test]
     #[should_panic]
+    fn missing_comma() {
+        parse(vec_of_strings![
+            "{", "\"foo\"", ":", "\"bar\"", "\"baz\"", ":", "false", "}"
+        ]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn trailing_comma_on_doubleton() {
+        parse(vec_of_strings![
+            "{", "\"foo\"", ":", "\"bar\"", ",", "\"baz\"", ":", "false", ",", "}"
+        ]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn leading_comma_on_doubleton() {
+        parse(vec_of_strings![
+            "{", ",", "\"foo\"", ":", "\"bar\"", ",", "\"baz\"", ":", "false", "}"
+        ]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn doubled_comma_on_doubleton() {
+        parse(vec_of_strings![
+            "{", "\"foo\"", ":", "\"bar\"", ",", ",", "\"baz\"", ":", "false", "}"
+        ]);
+    }
+    #[test]
+    #[should_panic]
     fn object_with_leading_comma() {
         parse(vec_of_strings!("{", ",", "\"foo\"", ":", "\"bar\"", "}"));
     }
