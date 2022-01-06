@@ -97,7 +97,7 @@ pub fn lex_slice(input: &str) -> Vec<String> {
 
 #[derive(PartialEq, Debug)]
 pub enum Value {
-    Number,
+    Number(f64),
     String(String),
     Boolean(bool),
     Null,
@@ -119,11 +119,16 @@ pub fn value(it: &mut Peekable<std::vec::IntoIter<String>>) -> Value {
         "{" => object(it),
         "[" => array(it),
         s if t.starts_with("\"") => Value::String(string(s)),
+        _ if ('0'..'9').contains(&t.chars().next().unwrap()) => number(t),
         s => {
             dbg!(s);
             todo!("");
         }
     }
+}
+
+fn number(t: String) -> Value {
+    Value::Number(t.parse::<f64>().unwrap())
 }
 
 fn array(it: &mut Peekable<std::vec::IntoIter<String>>) -> Value {
@@ -237,7 +242,12 @@ mod parser_tests {
             parse(vec_of_strings![
                 "[", "true", ",", "{", "}", ",", "false", "]"
             ])
-        )
+        );
+
+        assert_eq!(
+            Value::Array(vec![Value::Number(5.), Value::Number(27.)]),
+            parse(vec_of_strings!["[", "5", ",", "27", "]"])
+        );
     }
 
     #[test]
