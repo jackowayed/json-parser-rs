@@ -126,21 +126,48 @@ pub fn value(it: &mut std::vec::IntoIter<String>) -> Value {
 
 fn object(mut it: &mut std::vec::IntoIter<String>) -> Value {
     let mut map = HashMap::new();
-    let mut needs_comma = false;
+    /*
+    {}
+    {"foo": "bar"}
+    */
+    /*
+    {,}
+    {"foo": "bar",}
+    {,"foo": "bar"}
+
+    {
+    object()
+    1. COMMA NOT ALLOWED
+    read a pair
+    2. comma OR }
+    if comma
+    3. READ A PAIR?
+    comma OR }
+    */
+    #[derive(PartialEq, Debug)]
+    enum WhatsNext {
+        PairOrEnd, // start
+        CommaOrEnd,
+        Pair,
+    }
+    let mut state = WhatsNext::PairOrEnd;
     loop {
         let tok = it.next().unwrap();
         match tok.as_str() {
             "}" => {
-                assert!(needs_comma, "Object may not have trailing comma");
+                assert!(state != WhatsNext::Pair, "Can't end after comma");
                 return Value::Object(map);
             }
             "," => {
-                assert!(needs_comma, "Object may not have repeated or leading comma");
-                needs_comma = false;
+                assert!(
+                    state == WhatsNext::CommaOrEnd,
+                    "Comma where it shouldn't be."
+                );
+                state = WhatsNext::Pair;
             }
             _ => {
-                assert!(!needs_comma, "Object is missing a comma");
-                needs_comma = true;
+                assert!(state != WhatsNext::CommaOrEnd, "Need comma between pairs");
+                state = WhatsNext::CommaOrEnd;
                 // possible fix use singleton iterator to put t back via chaining.
                 let key = string(&tok);
                 assert!(it.next().unwrap().as_str() == ":");
@@ -149,7 +176,7 @@ fn object(mut it: &mut std::vec::IntoIter<String>) -> Value {
             }
         }
     }
-    return Value::Object(map);
+    //return Value::Object(map);
 }
 
 fn string(t: &str) -> String {
@@ -191,6 +218,7 @@ mod parser_tests {
         singleton_map.insert("foo".to_string(), Value::String("bar".to_string()));
         assert_eq!(
             Value::Object(singleton_map),
+            // {"foo": "bar"}
             parse(vec_of_strings!["{", "\"foo\"", ":", "\"bar\"", "}"])
         );
     }
