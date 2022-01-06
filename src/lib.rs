@@ -137,7 +137,6 @@ fn array(it: &mut Peekable<std::vec::IntoIter<String>>) -> Value {
     let mut just_saw_comma = false;
     loop {
         let tok = it.peek().unwrap();
-        dbg!(tok);
         match tok.as_str() {
             "]" => {
                 assert!(!just_saw_comma, "Array has trailing comma");
@@ -196,11 +195,9 @@ fn object(mut it: &mut Peekable<std::vec::IntoIter<String>>) -> Value {
             }
         }
     }
-    //return Value::Object(map);
 }
 
 fn string(t: &str) -> String {
-    dbg!(t);
     t[1..t.len() - 1].to_string()
 }
 
