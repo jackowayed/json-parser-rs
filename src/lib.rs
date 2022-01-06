@@ -126,24 +126,6 @@ pub fn value(it: &mut std::vec::IntoIter<String>) -> Value {
 
 fn object(mut it: &mut std::vec::IntoIter<String>) -> Value {
     let mut map = HashMap::new();
-    /*
-    {}
-    {"foo": "bar"}
-    */
-    /*
-    {,}
-    {"foo": "bar",}
-    {,"foo": "bar"}
-
-    {
-    object()
-    1. COMMA NOT ALLOWED
-    read a pair
-    2. comma OR }
-    if comma
-    3. READ A PAIR?
-    comma OR }
-    */
     #[derive(PartialEq, Debug)]
     enum WhatsNext {
         PairOrEnd, // start
@@ -220,6 +202,17 @@ mod parser_tests {
             Value::Object(singleton_map),
             // {"foo": "bar"}
             parse(vec_of_strings!["{", "\"foo\"", ":", "\"bar\"", "}"])
+        );
+
+        let mut doubleton_map = HashMap::new();
+        doubleton_map.insert("foo".to_string(), Value::String("bar".to_string()));
+        doubleton_map.insert("baz".to_string(), Value::Boolean(false));
+        assert_eq!(
+            Value::Object(doubleton_map),
+            // {"foo": "bar"}
+            parse(vec_of_strings![
+                "{", "\"foo\"", ":", "\"bar\"", ",", "\"baz\"", ":", "false", "}"
+            ])
         );
     }
 
