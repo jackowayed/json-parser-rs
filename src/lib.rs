@@ -102,20 +102,22 @@ pub enum Value {
     Boolean(bool),
     Null,
     Object(HashMap<String, Value>),
+    Array(Vec<Value>),
 }
 
 pub fn parse(tokens: Vec<String>) -> Value {
     //let t = tokens.first().unwrap().as_str();
-    let mut it = tokens.into_iter();
+    let mut it = tokens.into_iter().peekable();
     value(&mut it)
 }
 
-pub fn value(it: &mut std::vec::IntoIter<String>) -> Value {
+pub fn value(it: &mut Peekable<std::vec::IntoIter<String>>) -> Value {
     let t = it.next().unwrap();
     match t.as_str() {
         "true" => Value::Boolean(true),
         "false" => Value::Boolean(false),
         "{" => object(it),
+        "[" => array(it),
         s if t.starts_with("\"") => Value::String(string(s)),
         s => {
             dbg!(s);
@@ -124,7 +126,26 @@ pub fn value(it: &mut std::vec::IntoIter<String>) -> Value {
     }
 }
 
-fn object(mut it: &mut std::vec::IntoIter<String>) -> Value {
+fn array(it: &mut Peekable<std::vec::IntoIter<String>>) -> Value {
+    let mut arr = Vec::new();
+    loop {
+        let tok = it.peek().unwrap();
+        match tok.as_str() {
+            "]" => {
+                it.next();
+                return Value::Array(arr);
+            }
+            "," => {
+                it.next();
+            } // todo do comma assertions
+            _ => {
+                arr.push(value(it));
+            }
+        }
+    }
+}
+
+fn object(mut it: &mut Peekable<std::vec::IntoIter<String>>) -> Value {
     let mut map = HashMap::new();
     #[derive(PartialEq, Debug)]
     enum WhatsNext {
