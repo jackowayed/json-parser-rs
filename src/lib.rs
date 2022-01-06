@@ -116,6 +116,7 @@ pub fn value(it: &mut Peekable<std::vec::IntoIter<String>>) -> Value {
     match t.as_str() {
         "true" => Value::Boolean(true),
         "false" => Value::Boolean(false),
+        "null" => Value::Null,
         "{" => object(it),
         "[" => array(it),
         s if t.starts_with("\"") => Value::String(string(s)),
@@ -245,8 +246,8 @@ mod parser_tests {
         );
 
         assert_eq!(
-            Value::Array(vec![Value::Number(5.), Value::Number(27.)]),
-            parse(vec_of_strings!["[", "5", ",", "27", "]"])
+            Value::Array(vec![Value::Number(5.), Value::Number(27.), Value::Null]),
+            parse(vec_of_strings!["[", "5", ",", "27", ",", "null", "]"])
         );
     }
 
