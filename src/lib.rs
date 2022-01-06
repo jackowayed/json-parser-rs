@@ -227,6 +227,17 @@ mod parser_tests {
             Value::Array(vec![Value::Boolean(true), Value::Boolean(false)]),
             parse(vec_of_strings!["[", "true", ",", "false", "]"])
         );
+
+        assert_eq!(
+            Value::Array(vec![
+                Value::Boolean(true),
+                Value::Object(HashMap::new()),
+                Value::Boolean(false)
+            ]),
+            parse(vec_of_strings![
+                "[", "true", ",", "{", "}", ",", "false", "]"
+            ])
+        )
     }
 
     #[test]
