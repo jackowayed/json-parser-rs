@@ -211,6 +211,14 @@ mod parser_tests {
     }
 
     #[test]
+    fn array() {
+        assert_eq!(
+            Value::Array(vec![Value::Boolean(true), Value::Boolean(false)]),
+            parse(vec_of_strings!["[", "true", "false", "]"])
+        );
+    }
+
+    #[test]
     fn object() {
         let empty_map = HashMap::new();
         let empty_object_value = Value::Object(empty_map);
