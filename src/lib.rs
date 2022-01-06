@@ -128,17 +128,28 @@ pub fn value(it: &mut Peekable<std::vec::IntoIter<String>>) -> Value {
 
 fn array(it: &mut Peekable<std::vec::IntoIter<String>>) -> Value {
     let mut arr = Vec::new();
+    let mut just_saw_comma = false;
     loop {
         let tok = it.peek().unwrap();
+        dbg!(tok);
         match tok.as_str() {
             "]" => {
+                assert!(!just_saw_comma, "Array has trailing comma");
                 it.next();
                 return Value::Array(arr);
             }
             "," => {
+                assert!(!just_saw_comma, "Array has duplicate comma");
+                assert!(arr.len() > 0, "Array has leading comma");
+                just_saw_comma = true;
                 it.next();
             } // todo do comma assertions
             _ => {
+                assert!(
+                    just_saw_comma || arr.len() == 0,
+                    "Array items not separated by comma"
+                );
+                just_saw_comma = false;
                 arr.push(value(it));
             }
         }
@@ -214,8 +225,26 @@ mod parser_tests {
     fn array() {
         assert_eq!(
             Value::Array(vec![Value::Boolean(true), Value::Boolean(false)]),
-            parse(vec_of_strings!["[", "true", "false", "]"])
+            parse(vec_of_strings!["[", "true", ",", "false", "]"])
         );
+    }
+
+    #[test]
+    #[should_panic]
+    fn array_leading_comma() {
+        parse(vec_of_strings!["[", ",", "false", "]"]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn array_trailing_comma() {
+        parse(vec_of_strings!["[", "false", ",", "]"]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn array_duplicate_comma() {
+        parse(vec_of_strings!["[", "true", ",", ",", "false", "]"]);
     }
 
     #[test]
