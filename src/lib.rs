@@ -106,11 +106,11 @@ pub enum Value {
 
 pub fn parse(tokens: Vec<String>) -> Value {
     //let t = tokens.first().unwrap().as_str();
-    let it = tokens.into_iter();
-    value(it)
+    let mut it = tokens.into_iter();
+    value(&mut it)
 }
 
-pub fn value(mut it: std::vec::IntoIter<String>) -> Value {
+pub fn value(it: &mut std::vec::IntoIter<String>) -> Value {
     let t = it.next().unwrap();
     match t.as_str() {
         "true" => Value::Boolean(true),
@@ -124,27 +124,29 @@ pub fn value(mut it: std::vec::IntoIter<String>) -> Value {
     }
 }
 
-fn object(mut it: std::vec::IntoIter<String>) -> Value {
+fn object(mut it: &mut std::vec::IntoIter<String>) -> Value {
     let mut map = HashMap::new();
-    let t = it.next().unwrap();
     let mut needs_comma = false;
-    match t.as_str() {
-        "}" => {
-            assert!(needs_comma, "Object may not have trailing comma");
-            return Value::Object(map);
-        }
-        "," => {
-            assert!(needs_comma, "Object may not have repeated or leading comma");
-            needs_comma = false;
-        }
-        _ => {
-            assert!(!needs_comma, "Object is missing a comma");
-            needs_comma = true;
-            // possible fix use singleton iterator to put t back via chaining.
-            let key = string(t.as_str());
-            assert!(it.next().unwrap().as_str() == ":");
-            let value = value(it);
-            map.insert(key, value);
+    loop {
+        let tok = it.next().unwrap();
+        match tok.as_str() {
+            "}" => {
+                assert!(needs_comma, "Object may not have trailing comma");
+                return Value::Object(map);
+            }
+            "," => {
+                assert!(needs_comma, "Object may not have repeated or leading comma");
+                needs_comma = false;
+            }
+            _ => {
+                assert!(!needs_comma, "Object is missing a comma");
+                needs_comma = true;
+                // possible fix use singleton iterator to put t back via chaining.
+                let key = string(&tok);
+                assert!(it.next().unwrap().as_str() == ":");
+                let value = value(&mut it);
+                map.insert(key, value);
+            }
         }
     }
     return Value::Object(map);
