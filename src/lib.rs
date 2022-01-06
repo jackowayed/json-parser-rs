@@ -192,14 +192,16 @@ mod parser_tests {
     #[test]
     fn object() {
         let empty_map = HashMap::new();
+        let empty_object_value = Value::Object(empty_map);
 
         let empty_obj = parse(vec_of_strings!["{", "}"]);
-        assert_eq!(empty_obj, Value::Object(empty_map));
+        assert_eq!(empty_obj, empty_object_value);
 
         let mut singleton_map = HashMap::new();
         singleton_map.insert("foo".to_string(), Value::String("bar".to_string()));
+        let singleton_object = Value::Object(singleton_map);
         assert_eq!(
-            Value::Object(singleton_map),
+            singleton_object,
             // {"foo": "bar"}
             parse(vec_of_strings!["{", "\"foo\"", ":", "\"bar\"", "}"])
         );
@@ -212,6 +214,30 @@ mod parser_tests {
             // {"foo": "bar"}
             parse(vec_of_strings![
                 "{", "\"foo\"", ":", "\"bar\"", ",", "\"baz\"", ":", "false", "}"
+            ])
+        );
+
+        let mut nested_map = HashMap::new();
+        nested_map.insert("outer".to_string(), empty_object_value);
+        assert_eq!(
+            Value::Object(nested_map),
+            parse(vec_of_strings!["{", "\"outer\"", ":", "{", "}", "}"])
+        );
+
+        let mut nested_singleton_map = HashMap::new();
+        nested_singleton_map.insert("outer".to_string(), singleton_object);
+        assert_eq!(
+            Value::Object(nested_singleton_map),
+            parse(vec_of_strings![
+                "{",
+                "\"outer\"",
+                ":",
+                "{",
+                "\"foo\"",
+                ":",
+                "\"bar\"",
+                "}",
+                "}"
             ])
         );
     }
