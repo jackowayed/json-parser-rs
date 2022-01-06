@@ -102,6 +102,7 @@ pub enum Value {
     Boolean(bool),
     Null,
     Object(HashMap<String, Value>),
+    Array(Vec<Value>),
 }
 
 pub fn parse(tokens: Vec<String>) -> Value {
@@ -112,14 +113,31 @@ pub fn parse(tokens: Vec<String>) -> Value {
 
 pub fn value(it: &mut std::vec::IntoIter<String>) -> Value {
     let t = it.next().unwrap();
-    match t.as_str() {
+    inner_value(t, it)
+}
+
+fn inner_value(first_tokent: String, it ) -> Value {
+    match first_token.as_str() {
         "true" => Value::Boolean(true),
         "false" => Value::Boolean(false),
         "{" => object(it),
+        "[" => array(it),
         s if t.starts_with("\"") => Value::String(string(s)),
         s => {
             dbg!(s);
             todo!("");
+        }
+    }
+}
+
+fn array(mut it: &mut std::vec::IntoIter<String>) -> Value {
+    let mut arr = Vec::new();
+    loop {
+        let tok = it.next().unwrap();
+        match tok.as_str() {
+            "]" => return Value::Array(arr),
+            "," => (),
+            _ => value,
         }
     }
 }
