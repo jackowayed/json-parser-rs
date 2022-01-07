@@ -17,19 +17,38 @@ pub mod lexer {
         let mut tokens = vec![];
         let mut char_iter = input.chars();
         while let Some(c) = char_iter.next() {
-            let new_token = match c {
-                '0'..='9' | '-' => Some(number(&mut char_iter, c)),
-                '\t' | ' ' | '\n' | '\r' => None, // skip whitespace
-                //'"' => self.string(it),
-                ':' | ',' | '[' | ']' | '{' | '}' => Some(symbol(c)),
-                't' | 'f' | 'n' => Some(alpha_literal(&mut char_iter, c)?),
+            tokens.push(match c {
+                '0'..='9' | '-' => number(&mut char_iter, c),
+                '\t' | ' ' | '\n' | '\r' => continue, // skip whitespace
+                '"' => string(&mut char_iter)?,
+                ':' | ',' | '[' | ']' | '{' | '}' => symbol(c),
+                't' | 'f' | 'n' => alpha_literal(&mut char_iter, c)?,
                 _ => return Err("invalid syntax".to_string()),
-            };
-            if let Some(token) = new_token {
-                tokens.push(token);
-            }
+            });
         }
         Ok(tokens)
+    }
+
+    fn string(char_iter: &mut std::str::Chars) -> TokenResult {
+        let mut str = String::new();
+        let mut prior_was_backslash = false;
+        while let Some(c) = char_iter.next() {
+            if prior_was_backslash {
+                str.push(c);
+                prior_was_backslash = false;
+                continue;
+            }
+            match c {
+                '\\' => {
+                    prior_was_backslash = true;
+                }
+                '"' => {
+                    return Ok(Token::String(str));
+                }
+                _ => str.push(c),
+            }
+        }
+        return Err("unterminated string".to_string());
     }
 
     type TokenResult = Result<Token, String>;
@@ -90,6 +109,8 @@ pub mod lexer {
 
 #[cfg(test)]
 mod lexer_tests {
+    use crate::lex::lexer::Token;
+
     use super::*;
     use lexer::Token::*;
     // https://stackoverflow.com/a/38183903
@@ -124,5 +145,28 @@ mod lexer_tests {
     fn symbols() {
         assert_eq!(Ok(vec![Colon]), lexer::lex(" : ".to_string()));
         assert!(lexer::lex(">".to_string()).is_err());
+    }
+
+    #[test]
+    fn string() {
+        assert_eq!(
+            Ok(vec![Token::String("foo bar".to_string())]),
+            lexer::lex(" \"foo bar\"  ".to_string())
+        );
+        assert!(lexer::lex("\"foo \\\" bar".to_string()).is_err());
+    }
+
+    #[test]
+    fn combo() {
+        assert_eq!(
+            Ok(vec![
+                LeftBrace,
+                Token::String("foo".to_string()),
+                Colon,
+                Null,
+                RightBrace
+            ]),
+            lexer::lex("{  \"foo\": null} ".to_string())
+        );
     }
 }
