@@ -13,7 +13,7 @@ pub mod lexer {
         Colon,
     }
 
-    pub fn lex(input: String) -> Vec<Token> {
+    pub fn lex(input: String) -> Result<Vec<Token>, String> {
         let mut tokens = vec![];
         let mut char_iter = input.chars();
         while let Some(c) = char_iter.next() {
@@ -22,34 +22,40 @@ pub mod lexer {
                 '\t' | ' ' | '\n' | '\r' => None, // skip whitespace
                 //'"' => self.string(it),
                 ':' | ',' | '[' | ']' | '{' | '}' => Some(symbol(c)),
-                't' | 'f' | 'n' => Some(alpha_literal(&mut char_iter, c)),
+                't' | 'f' | 'n' => Some(alpha_literal(&mut char_iter, c)?),
                 _ => todo!("more matches coming"),
             };
             if let Some(token) = new_token {
                 tokens.push(token);
             }
         }
-        tokens
+        Ok(tokens)
     }
 
-    fn alpha_literal(char_iter: &mut std::str::Chars, first_char: char) -> Token {
+    type TokenResult = Result<Token, String>;
+
+    fn alpha_literal(char_iter: &mut std::str::Chars, first_char: char) -> TokenResult {
         use Token::*;
-        match first_char {
+        Ok(match first_char {
             't' => {
-                expect(char_iter, "rue");
+                expect(char_iter, "rue")?;
                 Boolean(true)
             }
             'f' => {
-                expect(char_iter, "alse");
+                expect(char_iter, "alse")?;
                 Boolean(false)
             }
             _ => todo!(),
-        }
+        })
     }
 
-    fn expect(char_iter: &mut std::str::Chars, next_chars: &str) {
+    fn expect(char_iter: &mut std::str::Chars, next_chars: &str) -> Result<(), String> {
         let token: String = char_iter.take(next_chars.len()).collect();
-        assert_eq!(token, next_chars); // == next_chars;
+        return if token != next_chars {
+            Err("unknown identifier".to_string())
+        } else {
+            Ok(())
+        };
     }
 
     fn symbol(c: char) -> Token {
@@ -91,19 +97,21 @@ mod lexer_tests {
     #[test]
     fn number() {
         assert_eq!(
-            vec![Number("-37".to_string())],
+            Ok(vec![Number("-37".to_string())]),
             lexer::lex("  -37 ".to_string())
         );
     }
 
     #[test]
     fn bool() {
-        assert_eq!(vec![Boolean(false)], lexer::lex("\n\tfalse ".to_string()));
+        assert_eq!(
+            Ok(vec![Boolean(false)]),
+            lexer::lex("\n\tfalse ".to_string())
+        );
     }
 
     #[test]
-    #[should_panic]
     fn bad_literal() {
-        lexer::lex("fxx".to_string());
+        assert!(lexer::lex("fxx".to_string()).is_err());
     }
 }
