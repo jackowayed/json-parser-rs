@@ -1,5 +1,7 @@
 use std::{collections::HashMap, iter::Peekable, str::Chars};
 
+pub mod lex;
+
 struct Lexer {
     tokens: Vec<String>,
 }
