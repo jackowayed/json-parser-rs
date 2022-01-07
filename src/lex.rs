@@ -23,7 +23,7 @@ pub mod lexer {
                 //'"' => self.string(it),
                 ':' | ',' | '[' | ']' | '{' | '}' => Some(symbol(c)),
                 't' | 'f' | 'n' => Some(alpha_literal(&mut char_iter, c)?),
-                _ => todo!("more matches coming"),
+                _ => return Err("invalid syntax".to_string()),
             };
             if let Some(token) = new_token {
                 tokens.push(token);
@@ -44,6 +44,10 @@ pub mod lexer {
             'f' => {
                 expect(char_iter, "alse")?;
                 Boolean(false)
+            }
+            'n' => {
+                expect(char_iter, "ull")?;
+                Null
             }
             _ => todo!(),
         })
@@ -113,5 +117,12 @@ mod lexer_tests {
     #[test]
     fn bad_literal() {
         assert!(lexer::lex("fxx".to_string()).is_err());
+        assert!(lexer::lex("x12".to_string()).is_err());
+    }
+
+    #[test]
+    fn symbols() {
+        assert_eq!(Ok(vec![Colon]), lexer::lex(" : ".to_string()));
+        assert!(lexer::lex(">".to_string()).is_err());
     }
 }
