@@ -1,6 +1,7 @@
 use std::{collections::HashMap, iter::Peekable};
 
-pub mod lex;
+mod lex;
+mod parse;
 
 #[derive(PartialEq, Debug)]
 pub enum Value {
